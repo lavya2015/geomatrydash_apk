@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Geometry Dash Infinite Jump</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    overflow:hidden;
+    background:#050816;
+}
+
+canvas{
+    display:block;
+}
+
+#menu{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    text-align:center;
+    color:white;
+}
+
+#menu h1{
+    font-size:80px;
+    color:#00ffff;
+    text-shadow:0 0 30px #00ffff;
+    margin-bottom:20px;
+}
+
+#menu p{
+    font-size:24px;
+    margin-bottom:20px;
+}
+
+button{
+    padding:16px 40px;
+    border:none;
+    border-radius:14px;
+    background:#00ffff;
+    color:black;
+    font-size:22px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{
+    transform:scale(1.05);
+}
+
+#gameOver{
+    display:none;
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    text-align:center;
+    color:white;
+}
+
+#gameOver h2{
+    font-size:70px;
+    color:red;
+    margin-bottom:20px;
+}
+
+#gameOver p{
+    font-size:30px;
+    margin-bottom:20px;
+}
+
+</style>
+</head>
+
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="menu">
+    <h1>NEON DASH</h1>
+    <p>UNLIMITED AIR JUMP MODE</p>
+    <button id="startBtn">START GAME</button>
+</div>
+
+<div id="gameOver">
+    <h2>GAME OVER</h2>
+    <p id="scoreText">Score: 0</p>
+    <button onclick="restartGame()">RESTART</button>
+</div>
+
+<script>
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const menu = document.getElementById("menu");
+const gameOver = document.getElementById("gameOver");
+const scoreText = document.getElementById("scoreText");
+const startBtn = document.getElementById("startBtn");
+
+let gameStarted = false;
+let gameEnded = false;
+
+let score = 0;
+
+let gravity = 0.9;
+let gameSpeed = 10;
+
+const player = {
+    x:150,
+    y:0,
+    width:68,
+    height:68,
+    velocityY:0,
+    jumping:false,
+    rotation:0
+};
+
+const ground = {
+    y:canvas.height - 130,
+    height:130
+};
+
+player.y = ground.y - player.height;
+
+let obstacles = [];
+
+function resizeGame(){
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    ground.y = canvas.height - 130;
+
+    if(player.y > ground.y - player.height){
+        player.y = ground.y - player.height;
+    }
+}
+
+window.addEventListener("resize", resizeGame);
+
+function jump(){
+
+    if(gameEnded || !gameStarted){
+        return;
+    }
+
+    player.velocityY = -32;
+
+    player.jumping = true;
+}
+
+window.addEventListener("keydown", function(e){
+
+    if(e.code === "Space" || e.code === "ArrowUp"){
+        jump();
+    }
+});
+
+window.addEventListener("touchstart", function(){
+    jump();
+});
+
+function createObstacle(){
+
+    const size = 70 + Math.random() * 45;
+
+    const type = Math.floor(Math.random() * 5);
+
+    obstacles.push({
+        x:canvas.width,
+        y:ground.y - size,
+        width:size,
+        height:size,
+        type:type
+    });
+}
+
+setInterval(function(){
+
+    if(gameStarted && !gameEnded){
+        createObstacle();
+    }
+
+},3000);
+
+function updatePlayer(){
+
+    player.velocityY += gravity;
+
+    player.y += player.velocityY;
+
+    player.rotation += 0.20;
+
+    if(player.y + player.height >= ground.y){
+
+        player.y = ground.y - player.height;
+
+        player.velocityY = 0;
+
+        player.rotation = 0;
+    }
+
+    if(player.y < 0){
+        player.y = 0;
+    }
+}
+
+function drawPlayer(){
+
+    ctx.save();
+
+    ctx.translate(
+        player.x + player.width/2,
+        player.y + player.height/2
+    );
+
+    ctx.rotate(player.rotation);
+
+    const gradient = ctx.createLinearGradient(
+        -35,-35,35,35
+    );
+
+    gradient.addColorStop(0,"#00ffff");
+    gradient.addColorStop(1,"#0044ff");
+
+    ctx.shadowBlur = 35;
+    ctx.shadowColor = "#00ffff";
+
+    ctx.fillStyle = gradient;
+
+    ctx.fillRect(
+        -player.width/2,
+        -player.height/2,
+        player.width,
+        player.height
+    );
+
+    ctx.fillStyle = "white";
+
+    ctx.fillRect(-15,-12,10,10);
+    ctx.fillRect(7,-12,10,10);
+
+    ctx.fillRect(-12,15,24,5);
+
+    ctx.restore();
+}
+
+function drawGround(){
+
+    ctx.fillStyle = "#111";
+
+    ctx.fillRect(
+        0,
+        ground.y,
+        canvas.width,
+        ground.height
+    );
+
+    ctx.strokeStyle = "#00ffff";
+
+    ctx.lineWidth = 5;
+
+    ctx.beginPath();
+
+    ctx.moveTo(0,ground.y);
+
+    ctx.lineTo(canvas.width,ground.y);
+
+    ctx.stroke();
+}
+
+function drawObstacles(){
+
+    for(let i = obstacles.length - 1; i >= 0; i--){
+
+        const obs = obstacles[i];
+
+        obs.x -= gameSpeed;
+
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = "red";
+
+        ctx.fillStyle = "#ff0033";
+
+        ctx.beginPath();
+
+        if(obs.type === 0){
+
+            ctx.moveTo(obs.x, obs.y + obs.height);
+            ctx.lineTo(obs.x + obs.width/2, obs.y);
+            ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+
+        }else if(obs.type === 1){
+
+            ctx.rect(
+                obs.x,
+                obs.y,
+                obs.width,
+                obs.height
+            );
+
+        }else if(obs.type === 2){
+
+            ctx.arc(
+                obs.x + obs.width/2,
+                obs.y + obs.height/2,
+                obs.width/2,
+                0,
+                Math.PI * 2
+            );
+
+        }else if(obs.type === 3){
+
+            ctx.moveTo(obs.x, obs.y + obs.height);
+
+            ctx.lineTo(obs.x + obs.width/4, obs.y);
+
+            ctx.lineTo(obs.x + obs.width/2, obs.y + obs.height);
+
+            ctx.lineTo(obs.x + obs.width*0.75, obs.y);
+
+            ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+
+        }else{
+
+            ctx.moveTo(obs.x + obs.width/2, obs.y);
+
+            ctx.lineTo(obs.x + obs.width, obs.y + obs.height/2);
+
+            ctx.lineTo(obs.x + obs.width/2, obs.y + obs.height);
+
+            ctx.lineTo(obs.x, obs.y + obs.height/2);
+        }
+
+        ctx.closePath();
+
+        ctx.fill();
+
+        if(
+            player.x < obs.x + obs.width &&
+            player.x + player.width > obs.x &&
+            player.y < obs.y + obs.height &&
+            player.y + player.height > obs.y
+        ){
+            endGame();
+        }
+
+        if(obs.x + obs.width < 0){
+
+            obstacles.splice(i,1);
+
+            score++;
+
+            if(gameSpeed < 24){
+                gameSpeed += 0.20;
+            }
+        }
+    }
+}
+
+function drawScore(){
+
+    ctx.fillStyle = "white";
+
+    ctx.font = "36px Arial";
+
+    ctx.fillText(
+        "Score: " + score,
+        20,
+        50
+    );
+
+    ctx.fillText(
+        "Speed: " + Math.floor(gameSpeed),
+        20,
+        95
+    );
+}
+
+function drawBackground(){
+
+    ctx.fillStyle = "#050816";
+
+    ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    for(let i = 0; i < 170; i++){
+
+        ctx.fillStyle = "white";
+
+        const x = (i * 170 - score * gameSpeed) % canvas.width;
+
+        const y = (i * 9) % canvas.height;
+
+        ctx.fillRect(x,y,2,2);
+    }
+}
+
+function endGame(){
+
+    gameEnded = true;
+
+    scoreText.innerText = "Score: " + score;
+
+    gameOver.style.display = "block";
+}
+
+function restartGame(){
+
+    obstacles = [];
+
+    score = 0;
+
+    gameSpeed = 10;
+
+    player.y = ground.y - player.height;
+
+    player.velocityY = 0;
+
+    player.rotation = 0;
+
+    gameEnded = false;
+
+    gameOver.style.display = "none";
+
+    animate();
+}
+
+function animate(){
+
+    if(gameEnded){
+        return;
+    }
+
+    requestAnimationFrame(animate);
+
+    drawBackground();
+
+    drawGround();
+
+    updatePlayer();
+
+    drawPlayer();
+
+    drawObstacles();
+
+    drawScore();
+}
+
+startBtn.addEventListener("click", function(){
+
+    menu.style.display = "none";
+
+    gameStarted = true;
+
+    animate();
+});
+
+</script>
+
+</body>
+</html>
